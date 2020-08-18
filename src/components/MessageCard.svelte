@@ -2,7 +2,7 @@
   export let message;
 </script>
 
-<div class="rounded-md shadow-md p-4 m-4 bg-gray-200">
+<div class="rounded-md shadow-md p-4 m-4 bg-gray-300">
   <p>{message.user}</p>
   <p>{message.content}</p>
 </div>
