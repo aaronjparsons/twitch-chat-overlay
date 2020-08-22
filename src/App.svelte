@@ -1,6 +1,7 @@
 <script>
+  import tmi from 'tmi.js';
   import { slide } from 'svelte/transition';
-  import { modalOpen } from './store.js';
+  import { modalOpen, settings } from './store.js';
   import Tailwindcss from './Tailwindcss.svelte';
   import MessageCard from './components/MessageCard.svelte'
   import Modal from './components/Modal.svelte'
@@ -9,21 +10,39 @@
   let activeButtonIndex = 0;
   const buttons = ['All', 'fa-heart', 'fa-star', 'fa-at'];
 
-  let messages = [
-    {
-      user: 'User 1',
-      content: 'Hey there!'
+  let messages = [];
+
+  const client = new tmi.Client({
+    connection: {
+      secure: true,
+      reconnect: true
     },
-    {
-      user: 'Carlton',
-      content: 'Do the dance!'
-    }
-  ];
+    channels: [$settings.channel]
+  });
+
+  client.connect();
+
+  client.on('message', (channel, tags, message, self) => {
+    console.log(`${tags['display-name']}: ${message}`);
+    messages = [{ user: tags['display-name'], content: message }, ...messages];
+  });
 
   $: displayedMessages = messages.filter(message => {
-    const queries = filterInput.split('|');
-    const regex = new RegExp(filterInput, 'gi');
+    if ($settings.ignoreCommands && message.content.charAt(0) === '!') {
+      return false;
+    }
+
+    if (activeButtonIndex === 1) {
+
+    } else if (activeButtonIndex === 2) {
+
+    } else if (activeButtonIndex === 3) {
+      return message.content.split(' ')[0].toLowerCase() === `@${$settings.channel}`.toLowerCase();
+    }
+
+
     if (filterInput.length) {
+      const regex = new RegExp(filterInput, 'gi');
       return regex.test(message.content);
     }
 
