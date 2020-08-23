@@ -11,6 +11,7 @@
   const buttons = ['All', 'fa-heart', 'fa-star', 'fa-at'];
 
   let messages = [];
+  let subscriptions = [];
 
   const client = new tmi.Client({
     connection: {
@@ -22,9 +23,30 @@
 
   client.connect();
 
-  client.on('message', (channel, tags, message, self) => {
-    console.log(`${tags['display-name']}: ${message}`);
-    messages = [{ user: tags['display-name'], content: message }, ...messages];
+  // Chat
+  client.on('chat', (channel, userstate, message, self) => {
+    addToMessages(userstate['display-name'], message, 'chat');
+  });
+
+  // Whisper
+  client.on('whisper', (channel, userstate, message, self) => {
+    console.log('whisper', userstate);
+    addToMessages(userstate['display-name'], message, 'whisper');
+  });
+
+  // Subscription
+  client.on("subscription", (channel, username, method, message, userstate) => {
+    // Do your stuff.
+    console.log('SUBSCRIPTION: ', username, method, message, userstate);
+    addToMessages(userstate['display-name'], userstate['system-msg'], 'sub', message);
+    addToSubscriptions(userstate['display-name'], userstate['system-msg'], 'resub', message);
+  });
+
+  client.on("resub", (channel, username, months, message, userstate, methods) => {
+    // Do your stuff.
+    console.log('RESUB: ', username, months, message, userstate, methods);
+    addToMessages(userstate['display-name'], userstate['system-msg'], 'resub', message);
+    addToSubscriptions(userstate['display-name'], userstate['system-msg'], 'resub', message);
   });
 
   $: displayedMessages = messages.filter(message => {
@@ -32,29 +54,44 @@
       return false;
     }
 
-    if (activeButtonIndex === 1) {
-
-    } else if (activeButtonIndex === 2) {
-
-    } else if (activeButtonIndex === 3) {
-      return message.content.split(' ')[0].toLowerCase() === `@${$settings.channel}`.toLowerCase();
-    }
-
-
     if (filterInput.length) {
       const regex = new RegExp(filterInput, 'gi');
       return regex.test(message.content);
     }
 
-    return message;
+    return true;
   });
+
+  function addToMessages(user, content, type, userMsg = null) {
+    messages = [
+      {
+        user,
+        content,
+        userMsg,
+        type
+      },
+      ...messages
+    ].slice(0, 50);
+  }
+
+  function addToSubscriptions(user, content, type, userMsg = null) {
+    subscriptions = [
+      {
+        user,
+        content,
+        userMsg,
+        type
+      },
+      ...subscriptions
+    ].slice(0, 50);
+  }
 
   function triggerButton(index) {
     activeButtonIndex = index;
   }
 
-  function addMessage() {
-    messages = [{ user: `User ${messages.length + 1}`, content: 'Another message' }, ...messages];
+  function clearMessages() {
+    messages = [];
   }
 
   function openModal() {
@@ -64,7 +101,7 @@
 
 <main class="flex flex-col h-full overflow-y-hidden p-5 bg-gray-300">
   <div class="flex flex-row mb-5">
-    <!-- Controls -->
+      <!-- Controls -->
     <input bind:value={filterInput} class="bg-gray-200 appearance-none border-2 border-gray-200 rounded w-full py-2 px-4 mr-5 text-gray-700 leading-tight focus:outline-none focus:bg-white focus:border-purple-500" type="text" placeholder="Filter by content. Eg: Hey|Hello">
     {#each buttons as button, i}
       <button on:click={() => triggerButton(i)} class="{activeButtonIndex === i ? 'active' : ''} bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
@@ -79,7 +116,7 @@
   </div>
   <div class="flex-auto rounded p-2 bg-gray-200 shadow-inner overflow-y-auto">
     <!-- Message List -->
-    <button on:click="{addMessage}">Add Message</button>
+    <button on:click="{clearMessages}">Clear Messages</button>
     {#each displayedMessages as message, index (message)}
       <div transition:slide>
         <MessageCard message="{message}" />
